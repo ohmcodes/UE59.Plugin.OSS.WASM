@@ -7,8 +7,11 @@
 #include "GameFramework/PlayerController.h"
 #include "GenericPlatform/GenericPlatformHttp.h"
 #include "Kismet/GameplayStatics.h"
+#include "HAL/PlatformMisc.h"
+#include "Misc/App.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Guid.h"
+#include "Misc/SecureHash.h"
 #include "Misc/Parse.h"
 #include "OnlineSubsystemWASMLog.h"
 #include "Policies/CondensedJsonPrintPolicy.h"
@@ -112,9 +115,25 @@ void UWasmOssSubsystem::LoadLocalState()
 	}
 	if (DeviceId.Len() < 16)
 	{
-		DeviceId = FGuid::NewGuid().ToString(EGuidFormats::Digits) + FGuid::NewGuid().ToString(EGuidFormats::Digits);
+		DeviceId = MakeDeviceId();
 		SaveLocalState();
 	}
+}
+
+FString UWasmOssSubsystem::MakeDeviceId()
+{
+#if !PLATFORM_WASM
+	// PC (and other native platforms): derive the id from the machine, so the player stays the same after a reinstall
+	// or a deleted save folder. The engine's login id is shared by every Unreal game on this machine/user, so it is
+	// hashed with the project name: the backend can't link the same person across different games.
+	const FString MachineId = FPlatformMisc::GetLoginId();
+	if (!MachineId.IsEmpty())
+	{
+		return TEXT("pc-") + FMD5::HashAnsiString(*(MachineId + TEXT("|") + FApp::GetProjectName() + TEXT("|OSSWASM")));
+	}
+#endif
+	// Browser (and fallback): a random id kept in this site's browser storage (or the save folder).
+	return TEXT("web-") + FGuid::NewGuid().ToString(EGuidFormats::Digits) + FGuid::NewGuid().ToString(EGuidFormats::Digits);
 }
 
 void UWasmOssSubsystem::SaveLocalState() const
@@ -206,10 +225,11 @@ void UWasmOssSubsystem::LoginAsGuest(const FString& DisplayName, FOnLogin&& OnCo
 {
 	const TSharedRef<FJsonObject> Body = MakeShared<FJsonObject>();
 	Body->SetStringField(TEXT("deviceId"), GetDeviceIdForRequests());
-	const FString Name = DisplayName.IsEmpty() ? SavedDisplayName : DisplayName;
-	if (!Name.IsEmpty())
+	// Only send a name when the caller chose one: the backend remembers each player's name, and gives new guests a
+	// random friendly one. (Re-sending the locally saved name made extra local test clients copy the first one's name.)
+	if (!DisplayName.IsEmpty())
 	{
-		Body->SetStringField(TEXT("displayName"), Name.Left(32));
+		Body->SetStringField(TEXT("displayName"), DisplayName.Left(32));
 	}
 
 	TWeakObjectPtr<UWasmOssSubsystem> WeakThis(this);

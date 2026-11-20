@@ -20,6 +20,9 @@ Browser (game)  --WebSocket ws(s)://relay/udp?to=-->  ws_relay  --UDP-->  dedica
   every Blueprint node works the same in the browser. Your backend must allow the page's origin (CORS, guide 01; the
   defaults already allow `localhost:*` and itch.io).
 
+Web and Windows players can be on the same server at the same time (cross-play). What must match between the builds,
+and why the web build's optimizations don't affect it: guide 07.
+
 ## 1. One-time setup
 
 1. **emscripten 6.0.10**, exactly (the engine accepts no other version):

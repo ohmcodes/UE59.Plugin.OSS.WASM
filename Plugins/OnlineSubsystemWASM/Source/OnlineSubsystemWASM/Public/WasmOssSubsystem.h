@@ -97,6 +97,7 @@ private:
 	void LoadLocalState();
 	void SaveLocalState() const;
 	FString GetDeviceIdForRequests() const;
+	static FString MakeDeviceId();
 
 	FString DeviceId;
 	FString PlayerToken;

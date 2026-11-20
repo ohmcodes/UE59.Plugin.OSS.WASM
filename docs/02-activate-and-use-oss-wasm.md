@@ -65,6 +65,16 @@ Plain getters (from **Get Game Instance → Get Subsystem → Wasm Oss Subsystem
 
 Login is needed before Join Server, Submit Score and the cloud save nodes. Get Server List and Get Leaderboard work without it.
 
+**Guest identity.** No account or password is needed:
+
+- **In a browser** the plugin keeps a random id in that site's browser storage: the same browser gets the same
+  player back. Another browser, a private window or cleared site data is a new player.
+- **On PC** the id is derived from the machine (hashed with your project name, so other games can't match it): the
+  same PC gets the same player back, even after a reinstall or a deleted save folder.
+- **New players get a random name** like `SwiftOtter4821`. Pass a Display Name to Login As Guest to rename; leave it
+  empty to keep the current name. Names are cleaned by the backend (no control characters or `< >`, max 24).
+- Several local test clients on one PC: start the extra ones with `-WasmOssGuestSuffix=2` (3, ...).
+
 ### Minimal test (Level Blueprint)
 
 1. Start the backend locally (guide 01, section 1): `npm run dev` in `Node.OSSWASMBackend`.

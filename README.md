@@ -23,6 +23,7 @@ A full sample game (Third Person, web client + dedicated server) is in
 | 04 | [Package the web (Wasm) client](docs/04-package-wasm-client.md) |
 | 05 | [Build the premade Blueprints](docs/05-build-premade-blueprints.md) |
 | 06 | [Developer guide: client and server, Blueprint and C++](docs/06-developer-guide.md) |
+| 07 | [How it fits together: architecture, cross-play (PC + browser), and why not Steam/EOS](docs/07-architecture-and-crossplay.md) |
 
 ## Requirements
 - Unreal Engine 5.9 (tested with 5.9 Preview 2 source build), C++ project.

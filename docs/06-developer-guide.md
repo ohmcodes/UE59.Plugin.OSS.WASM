@@ -376,3 +376,4 @@ Clients see it in `FWasmOssServerInfo::Mode` / `State` (the next heartbeat sends
 | `SetListedGameMode(Mode)`, `SetListedState(State)` | Set Listed Game Mode, Set Listed State |
 
 Server options (command line / environment): guide 03. Backend settings: guide 01.
+Architecture, cross-play rules and versioning (Project Version vs Game Version): guide 07.
