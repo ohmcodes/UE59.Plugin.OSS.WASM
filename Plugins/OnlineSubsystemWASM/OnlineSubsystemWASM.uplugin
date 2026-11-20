@@ -1,0 +1,22 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "OSS WASM",
+	"Description": "Self-hostable online services for UE 5.9 web (Wasm) games: guest login, server list, join tickets, leaderboards and cloud saves against your own OSSWASM backend. Works on Wasm (browser fetch) and every native platform (engine HTTP).",
+	"Category": "Online Platform",
+	"CreatedBy": "Ohmcodes",
+	"CreatedByURL": "https://github.com/ohmcodes/UE59.Plugin.OSS.WASM",
+	"DocsURL": "https://github.com/ohmcodes/UE59.Plugin.OSS.WASM/tree/main/docs",
+	"SupportURL": "https://github.com/ohmcodes/UE59.Plugin.OSS.WASM/issues",
+	"EnabledByDefault": false,
+	"CanContainContent": true,
+	"IsBetaVersion": true,
+	"Modules": [
+		{
+			"Name": "OnlineSubsystemWASM",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

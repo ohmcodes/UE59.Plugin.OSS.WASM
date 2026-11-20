@@ -80,3 +80,6 @@ DerivedDataCache/*
 /Content/ThirdPerson
 /Content/LevelPrototyping
 /Content/Input
+scripts/out/
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
