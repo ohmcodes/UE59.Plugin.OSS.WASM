@@ -5,6 +5,7 @@
 #include "WasmOssLeaderboardWidget.h"
 #include "WasmOssMainMenuWidget.h"
 #include "WasmOssMenuPlayerController.h"
+#include "WasmOssSettings.h"
 #include "WasmOssSubsystem.h"
 #include "OnlineSubsystemWASMLog.h"
 
@@ -481,6 +482,11 @@ void UWasmOssMainMenuWidget::NativeOnInitialized()
 	{
 		Button_Login->OnClicked.AddUniqueDynamic(this, &ThisClass::HandleLoginClicked);
 	}
+	if (Button_ItchLogin)
+	{
+		Button_ItchLogin->SetVisibility(ESlateVisibility::Collapsed); // shown after the backend confirms itch.io is on
+		Button_ItchLogin->OnClicked.AddUniqueDynamic(this, &ThisClass::HandleItchLoginClicked);
+	}
 	if (Button_Servers)
 	{
 		Button_Servers->OnClicked.AddUniqueDynamic(this, &ThisClass::ShowServerBrowser);
@@ -521,6 +527,53 @@ void UWasmOssMainMenuWidget::NativeConstruct()
 	{
 		Login();
 	}
+	if (Button_ItchLogin && GetDefault<UWasmOssSettings>()->bEnableItchLogin)
+	{
+		if (UWasmOssSubsystem* Mutable = UWasmOssSubsystem::Get(this))
+		{
+			TWeakObjectPtr<UWasmOssMainMenuWidget> WeakThis(this);
+			Mutable->GetLoginProviders([WeakThis](bool bOk, const TArray<FString>& Providers, const FString&)
+			{
+				UWasmOssMainMenuWidget* This = WeakThis.Get();
+				if (This && bOk && This->Button_ItchLogin && Providers.Contains(TEXT("itch")))
+				{
+					This->Button_ItchLogin->SetVisibility(ESlateVisibility::Visible);
+				}
+			});
+		}
+	}
+}
+
+void UWasmOssMainMenuWidget::HandleItchLoginClicked()
+{
+	UWasmOssSubsystem* Subsystem = UWasmOssSubsystem::Get(this);
+	if (!Subsystem)
+	{
+		return;
+	}
+	if (bLoggingIn)
+	{
+		Subsystem->CancelProviderLogin(); // a second click cancels the wait
+		return;
+	}
+	bLoggingIn = true;
+	WasmOssWidgets::SetTextIfBound(Text_Player, LOCTEXT("ItchWaiting", "Finish the login in the itch.io tab... (click again to cancel)"));
+	TWeakObjectPtr<UWasmOssMainMenuWidget> WeakThis(this);
+	Subsystem->LoginWithProvider(TEXT("itch"), [WeakThis](bool bOk, const FWasmOssPlayer&, const FString& Error)
+	{
+		UWasmOssMainMenuWidget* This = WeakThis.Get();
+		if (!This)
+		{
+			return;
+		}
+		This->bLoggingIn = false;
+		This->ShowPlayer(); // OnLoggedIn fires through OnLoginChanged
+		if (!bOk)
+		{
+			WasmOssWidgets::SetTextIfBound(This->Text_Player, FText::Format(LOCTEXT("ItchFailed", "itch.io login failed: {0}"), FText::FromString(Error)));
+			This->OnLoginFailed(Error);
+		}
+	});
 }
 
 void UWasmOssMainMenuWidget::Login()

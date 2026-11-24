@@ -8,6 +8,8 @@
 #include "GenericPlatform/GenericPlatformHttp.h"
 #include "Kismet/GameplayStatics.h"
 #include "HAL/PlatformMisc.h"
+#include "HAL/PlatformProcess.h"
+#include "HAL/PlatformTime.h"
 #include "Misc/App.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Guid.h"
@@ -246,15 +248,182 @@ void UWasmOssSubsystem::LoginAsGuest(const FString& DisplayName, FOnLogin&& OnCo
 				Callback(false, FWasmOssPlayer(), Error);
 				return;
 			}
-			Self->PlayerToken = Json->GetStringField(TEXT("token"));
-			Self->Player.Id = (*PlayerJson)->GetStringField(TEXT("id"));
-			Self->Player.DisplayName = (*PlayerJson)->GetStringField(TEXT("displayName"));
-			Self->SavedDisplayName = Self->Player.DisplayName;
-			Self->SaveLocalState();
-			UE_LOG(LogOssWasm, Log, TEXT("Logged in as %s (%s)"), *Self->Player.DisplayName, *Self->Player.Id);
-			Self->OnLoginChanged.Broadcast(Self->Player);
+			Self->ApplyLoginJson(Json);
 			Callback(true, Self->Player, FString());
 		});
+}
+
+bool UWasmOssSubsystem::ApplyLoginJson(const TSharedPtr<FJsonObject>& Json)
+{
+	const TSharedPtr<FJsonObject>* PlayerJson = nullptr;
+	if (!Json || !Json->TryGetObjectField(TEXT("player"), PlayerJson))
+	{
+		return false;
+	}
+	PlayerToken = Json->GetStringField(TEXT("token"));
+	Player.Id = (*PlayerJson)->GetStringField(TEXT("id"));
+	Player.DisplayName = (*PlayerJson)->GetStringField(TEXT("displayName"));
+	SavedDisplayName = Player.DisplayName;
+	SaveLocalState();
+	UE_LOG(LogOssWasm, Log, TEXT("Logged in as %s (%s)"), *Player.DisplayName, *Player.Id);
+	OnLoginChanged.Broadcast(Player);
+	return true;
+}
+
+// ---- Login providers -------------------------------------------------------------------------------------------------
+
+void UWasmOssSubsystem::GetLoginProviders(FOnProviders&& OnComplete)
+{
+	CallBackend(TEXT("GET"), TEXT("/v1/auth/providers"), FString(), false,
+		[Callback = MoveTemp(OnComplete)](const FWasmOssHttpResponse& Response)
+		{
+			TArray<FString> Names;
+			const TSharedPtr<FJsonObject> Json = Response.IsOk() ? ParseJson(Response.Body) : nullptr;
+			const TArray<TSharedPtr<FJsonValue>>* List = nullptr;
+			if (!Json || !Json->TryGetArrayField(TEXT("providers"), List))
+			{
+				Callback(false, Names, DescribeError(Response));
+				return;
+			}
+			for (const TSharedPtr<FJsonValue>& Value : *List)
+			{
+				const TSharedPtr<FJsonObject>* Item = nullptr;
+				FString Name;
+				if (Value->TryGetObject(Item) && (*Item)->TryGetStringField(TEXT("name"), Name))
+				{
+					Names.Add(Name);
+				}
+			}
+			Callback(true, Names, FString());
+		});
+}
+
+void UWasmOssSubsystem::LoginWithProvider(const FString& Provider, FOnLogin&& OnComplete)
+{
+	if (Provider.Equals(TEXT("guest"), ESearchCase::IgnoreCase))
+	{
+		LoginAsGuest(FString(), MoveTemp(OnComplete));
+		return;
+	}
+	for (const TCHAR Char : Provider)
+	{
+		if (!FChar::IsAlnum(Char) && Char != TEXT('-') && Char != TEXT('_'))
+		{
+			OnComplete(false, FWasmOssPlayer(), TEXT("Invalid provider name"));
+			return;
+		}
+	}
+	if (ProviderCallback)
+	{
+		FinishProviderLogin(false, TEXT("Cancelled: another login was started"));
+	}
+	ProviderCallback = MoveTemp(OnComplete);
+	ProviderName = Provider.ToLower();
+
+	TWeakObjectPtr<UWasmOssSubsystem> WeakThis(this);
+	CallBackend(TEXT("POST"), TEXT("/v1/auth/") + ProviderName + TEXT("/start"), TEXT("{}"), false,
+		[WeakThis](const FWasmOssHttpResponse& Response)
+		{
+			UWasmOssSubsystem* Self = WeakThis.Get();
+			if (!Self || !Self->ProviderCallback)
+			{
+				return; // cancelled or shut down meanwhile
+			}
+			const TSharedPtr<FJsonObject> Json = Response.IsOk() ? ParseJson(Response.Body) : nullptr;
+			FString Url;
+			if (!Json || !Json->TryGetStringField(TEXT("authorizeUrl"), Url) || !Json->TryGetStringField(TEXT("pollId"), Self->ProviderPollId))
+			{
+				Self->FinishProviderLogin(false, DescribeError(Response));
+				return;
+			}
+			double ExpiresIn = 600.0;
+			Json->TryGetNumberField(TEXT("expiresIn"), ExpiresIn);
+			Self->ProviderDeadline = FPlatformTime::Seconds() + ExpiresIn;
+
+			FString LaunchError;
+			FPlatformProcess::LaunchURL(*Url, nullptr, &LaunchError);
+			if (!LaunchError.IsEmpty())
+			{
+				Self->FinishProviderLogin(false, TEXT("Could not open the browser: ") + LaunchError);
+				return;
+			}
+			UE_LOG(LogOssWasm, Log, TEXT("Waiting for the %s login in the browser..."), *Self->ProviderName);
+			Self->ProviderTicker = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(Self, [Self](float)
+			{
+				Self->PollProviderLogin();
+				return Self->ProviderCallback ? true : false;
+			}), 2.0f);
+		});
+}
+
+void UWasmOssSubsystem::PollProviderLogin()
+{
+	if (!ProviderCallback || bProviderPollInFlight)
+	{
+		return;
+	}
+	if (FPlatformTime::Seconds() > ProviderDeadline)
+	{
+		FinishProviderLogin(false, TEXT("The login took too long. Try again."));
+		return;
+	}
+	bProviderPollInFlight = true;
+	TWeakObjectPtr<UWasmOssSubsystem> WeakThis(this);
+	const FString PollId = ProviderPollId;
+	CallBackend(TEXT("GET"), TEXT("/v1/auth/") + ProviderName + TEXT("/status/") + Encode(PollId), FString(), false,
+		[WeakThis, PollId](const FWasmOssHttpResponse& Response)
+		{
+			UWasmOssSubsystem* Self = WeakThis.Get();
+			if (!Self || Self->ProviderPollId != PollId)
+			{
+				return; // finished or replaced meanwhile
+			}
+			Self->bProviderPollInFlight = false;
+			const TSharedPtr<FJsonObject> Json = Response.IsOk() ? ParseJson(Response.Body) : nullptr;
+			if (!Json)
+			{
+				if (Response.bConnected && Response.Status >= 400 && Response.Status < 500)
+				{
+					Self->FinishProviderLogin(false, DescribeError(Response)); // expired or unknown
+				}
+				return; // network hiccup: keep polling until the deadline
+			}
+			FString Status;
+			Json->TryGetStringField(TEXT("status"), Status);
+			if (Status == TEXT("done"))
+			{
+				const bool bApplied = Self->ApplyLoginJson(Json);
+				Self->FinishProviderLogin(bApplied, bApplied ? FString() : FString(TEXT("The backend sent an unexpected login answer")));
+			}
+			else if (Status == TEXT("error"))
+			{
+				FString Message;
+				Json->TryGetStringField(TEXT("message"), Message);
+				Self->FinishProviderLogin(false, Message.IsEmpty() ? FString(TEXT("Login failed")) : Message);
+			}
+		});
+}
+
+void UWasmOssSubsystem::FinishProviderLogin(bool bSuccess, const FString& Error)
+{
+	FTSTicker::GetCoreTicker().RemoveTicker(ProviderTicker);
+	ProviderTicker.Reset();
+	ProviderPollId.Reset();
+	bProviderPollInFlight = false;
+	TFunction<void(bool, const FWasmOssPlayer&, const FString&)> Callback = MoveTemp(ProviderCallback);
+	ProviderCallback = nullptr;
+	if (Callback)
+	{
+		Callback(bSuccess, bSuccess ? Player : FWasmOssPlayer(), Error);
+	}
+}
+
+void UWasmOssSubsystem::CancelProviderLogin()
+{
+	if (ProviderCallback)
+	{
+		FinishProviderLogin(false, TEXT("Cancelled"));
+	}
 }
 
 // ---- Server list -----------------------------------------------------------------------------------------------------

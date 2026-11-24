@@ -60,6 +60,37 @@ void UWasmOssLoginAsGuestAction::Fail(const FString& Error)
 	OnFailure.Broadcast(FWasmOssPlayer(), Error);
 }
 
+// ---- Login With Provider ---------------------------------------------------------------------------------------------
+
+UWasmOssLoginWithProviderAction* UWasmOssLoginWithProviderAction::LoginWithProvider(UObject* WorldContextObject, const FString& Provider)
+{
+	UWasmOssLoginWithProviderAction* Action = MakeAction<UWasmOssLoginWithProviderAction>(WorldContextObject);
+	Action->WorldContext = WorldContextObject;
+	Action->Provider = Provider;
+	return Action;
+}
+
+void UWasmOssLoginWithProviderAction::Activate()
+{
+	if (UWasmOssSubsystem* Subsystem = GetSubsystemOrFail())
+	{
+		TWeakObjectPtr<UWasmOssLoginWithProviderAction> WeakThis(this);
+		Subsystem->LoginWithProvider(Provider, [WeakThis](bool bSuccess, const FWasmOssPlayer& Player, const FString& Error)
+		{
+			if (UWasmOssLoginWithProviderAction* Self = WeakThis.Get())
+			{
+				(bSuccess ? Self->OnSuccess : Self->OnFailure).Broadcast(Player, Error);
+				Self->SetReadyToDestroy();
+			}
+		});
+	}
+}
+
+void UWasmOssLoginWithProviderAction::Fail(const FString& Error)
+{
+	OnFailure.Broadcast(FWasmOssPlayer(), Error);
+}
+
 // ---- Get Server List -------------------------------------------------------------------------------------------------
 
 UWasmOssGetServerListAction* UWasmOssGetServerListAction::GetServerList(UObject* WorldContextObject, const FString& Region, bool bIncludeFull)

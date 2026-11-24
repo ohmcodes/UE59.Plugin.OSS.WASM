@@ -28,6 +28,13 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Backend", meta = (ClampMin = "1", ClampMax = "120"))
 	float RequestTimeoutSeconds = 15.f;
 
+	/**
+	 * Offer "Log in with itch.io" in the premade main menu (Button_ItchLogin). Only decides which button the menu shows;
+	 * the real switch is on the backend (ITCH_CLIENT_ID), which the menu also checks.
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Login Providers")
+	bool bEnableItchLogin = false;
+
 	/** In Play In Editor, give every PIE instance its own guest player so multiplayer tests see different players. */
 	UPROPERTY(Config, EditAnywhere, Category = "Testing")
 	bool bUniquePlayerPerPIEInstance = true;

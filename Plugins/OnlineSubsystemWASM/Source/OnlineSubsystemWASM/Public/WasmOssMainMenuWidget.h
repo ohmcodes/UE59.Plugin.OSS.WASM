@@ -16,7 +16,7 @@ class UWasmOssLeaderboardWidget;
  * Base class for the main menu (WBP_WasmOss_MainMenu, guide 05): guest login with a display name, then pages for the
  * server browser and the leaderboard inside a Widget Switcher.
  * Required widgets: Switcher_Pages (page 0 = home), Text_Player.
- * Optional: TextBox_DisplayName, Button_Login, Button_Servers, Button_Leaderboard, Button_Quit,
+ * Optional: TextBox_DisplayName, Button_Login, Button_ItchLogin, Button_Servers, Button_Leaderboard, Button_Quit,
  *           Page_ServerBrowser (a WBP_WasmOss_ServerBrowser inside the switcher), Page_Leaderboard (likewise).
  */
 UCLASS(Abstract)
@@ -64,6 +64,10 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UButton> Button_Login;
 
+	/** "Log in with itch.io". Hidden unless Project Settings > OSS WASM > Enable Itch Login is on AND the backend has ITCH_CLIENT_ID. */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> Button_ItchLogin;
+
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UButton> Button_Servers;
 
@@ -82,6 +86,9 @@ protected:
 private:
 	UFUNCTION()
 	void HandleLoginClicked();
+
+	UFUNCTION()
+	void HandleItchLoginClicked();
 
 	UFUNCTION()
 	void HandleQuitClicked();

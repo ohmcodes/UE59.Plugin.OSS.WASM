@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Containers/Ticker.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "WasmOssHttp.h"
 #include "WasmOssTypes.h"
@@ -27,6 +28,7 @@ class ONLINESUBSYSTEMWASM_API UWasmOssSubsystem : public UGameInstanceSubsystem
 public:
 	using FOnDone = TFunction<void(bool bSuccess, const FString& Error)>;
 	using FOnLogin = TFunction<void(bool bSuccess, const FWasmOssPlayer& Player, const FString& Error)>;
+	using FOnProviders = TFunction<void(bool bSuccess, const TArray<FString>& Providers, const FString& Error)>;
 	using FOnServers = TFunction<void(bool bSuccess, const TArray<FWasmOssServerInfo>& Servers, const FString& Error)>;
 	using FOnJoinTicket = TFunction<void(bool bSuccess, const FString& Address, const FString& Ticket, const FString& Error)>;
 	using FOnScore = TFunction<void(bool bSuccess, const FWasmOssLeaderboardEntry& Entry, bool bImproved, const FString& Error)>;
@@ -41,6 +43,20 @@ public:
 
 	/** Logs in as a guest. The same device gets the same player back. Empty DisplayName keeps the current one. */
 	void LoginAsGuest(const FString& DisplayName, FOnLogin&& OnComplete);
+
+	/** Names of the login providers the backend offers ("guest", "itch", ...). Guest is always there. */
+	void GetLoginProviders(FOnProviders&& OnComplete);
+
+	/**
+	 * Logs in with a provider by name. "guest" = LoginAsGuest. For "itch" the backend runs the OAuth flow: this opens
+	 * the itch.io page (a new tab on the web, the system browser on PC) and polls the backend until the player finished,
+	 * CancelProviderLogin() is called, or the backend's time limit (10 minutes) passes. Call it straight from a button
+	 * click so browsers allow the new tab.
+	 */
+	void LoginWithProvider(const FString& Provider, FOnLogin&& OnComplete);
+
+	/** Stops waiting for a provider login (its callback then reports failure). */
+	void CancelProviderLogin();
 
 	UFUNCTION(BlueprintPure, Category = "OSS WASM")
 	bool IsLoggedIn() const { return !PlayerToken.IsEmpty(); }
@@ -103,6 +119,17 @@ public:
 	static FWasmOssLeaderboardEntry LeaderboardEntryFromJson(const FJsonObject& Json);
 
 private:
+	bool ApplyLoginJson(const TSharedPtr<FJsonObject>& Json);
+	void PollProviderLogin();
+	void FinishProviderLogin(bool bSuccess, const FString& Error);
+
+	TFunction<void(bool, const FWasmOssPlayer&, const FString&)> ProviderCallback;
+	FString ProviderName;
+	FString ProviderPollId;
+	double ProviderDeadline = 0.0;
+	bool bProviderPollInFlight = false;
+	FTSTicker::FDelegateHandle ProviderTicker;
+
 	void LoadLocalState();
 	void SaveLocalState() const;
 	FString GetDeviceIdForRequests() const;

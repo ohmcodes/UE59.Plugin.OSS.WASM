@@ -54,6 +54,36 @@ private:
 	FString DisplayName;
 };
 
+// ---- Login With Provider ---------------------------------------------------------------------------------------------
+
+UCLASS()
+class ONLINESUBSYSTEMWASM_API UWasmOssLoginWithProviderAction : public UWasmOssAsyncActionBase
+{
+	GENERATED_BODY()
+
+public:
+	/**
+	 * Logs in with a provider by name ("guest" or "itch"). For itch.io this opens the itch.io page in the browser and
+	 * waits until the player finished (up to 10 minutes). Call it from a button click so browsers allow the new tab.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "OSS WASM", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", DisplayName = "Login With Provider"))
+	static UWasmOssLoginWithProviderAction* LoginWithProvider(UObject* WorldContextObject, const FString& Provider);
+
+	UPROPERTY(BlueprintAssignable)
+	FWasmOssLoginPin OnSuccess;
+
+	UPROPERTY(BlueprintAssignable)
+	FWasmOssLoginPin OnFailure;
+
+	virtual void Activate() override;
+
+protected:
+	virtual void Fail(const FString& Error) override;
+
+private:
+	FString Provider;
+};
+
 // ---- Get Server List -------------------------------------------------------------------------------------------------
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FWasmOssServersPin, const TArray<FWasmOssServerInfo>&, Servers, const FString&, Error);

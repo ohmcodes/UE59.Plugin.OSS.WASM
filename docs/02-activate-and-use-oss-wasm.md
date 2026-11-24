@@ -88,6 +88,18 @@ Login is needed before Join Server, Submit Score and the cloud save nodes. Get S
 
 Premade widgets (server browser, leaderboard, main menu) are covered in guide 05. For full client **and dedicated server** recipes in Blueprint and C++ (server-side scores, On Player Verified, listed match state), see guide 06.
 
+### Login with itch.io (optional)
+
+Needs the backend set up first (backend guide 01, section 7). Blueprint: node **Login With Provider** with
+`Provider` = `itch` (call it from a button click so the browser allows the new tab). It opens the itch.io page, waits
+until the player finished (up to 10 minutes) and fires On Success with the player, or On Failure with the reason
+(cancelled, expired, itch.io error). `guest` works as a provider name too. The premade main menu has an optional
+`Button_ItchLogin` (guide 05) that appears only when **Project Settings > OSS WASM > Login Providers > Enable Itch
+Login** is on and the backend lists `itch` at `/v1/auth/providers`.
+
+C++: `Subsystem->GetLoginProviders(...)`, `Subsystem->LoginWithProvider(TEXT("itch"), callback)`,
+`Subsystem->CancelProviderLogin()`.
+
 ## 4. Using it from C++
 
 Add `"OnlineSubsystemWASM"` to your module's `PublicDependencyModuleNames`, then:

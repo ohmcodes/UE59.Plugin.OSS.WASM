@@ -142,6 +142,7 @@ Canvas Panel
    │  ├─ Horizontal Box
    │  │  ├─ TextBox_DisplayName (Editable Text Box)  Hint Text "Your name"   optional
    │  │  └─ Button_Login (Button) └─ "Set name"                               optional
+   │  ├─ Button_ItchLogin   (Button) └─ "Log in with itch.io"  (shown only when enabled, see below) optional
    │  ├─ Button_Servers     (Button) └─ "Play online"                         optional
    │  ├─ Button_Leaderboard (Button) └─ "Leaderboard"                          optional
    │  └─ Button_Quit        (Button) └─ "Quit"   (hidden automatically on the web) optional
@@ -156,6 +157,11 @@ Class Defaults: **Auto Login** on (logs in as a guest when the menu opens; the b
 time, and the name is remembered on this device/browser). Typing a name and pressing **Set name** renames the player.
 
 Optional events: **On Logged In**, **On Login Failed**.
+
+**itch.io login** (optional): add `Button_ItchLogin`. It stays hidden unless **Project Settings > OSS WASM > Login
+Providers > Enable Itch Login** is on and the backend has `ITCH_CLIENT_ID` (backend guide 01, section 7). Clicking it
+opens itch.io in a new tab; the player approves and returns to the game, which logs in by itself. Clicking the button
+again while waiting cancels. Test it after the backend is online (itch needs a real https redirect URI).
 
 ## 6. BP_WasmOss_MenuController and BP_WasmOss_MenuGameMode
 
