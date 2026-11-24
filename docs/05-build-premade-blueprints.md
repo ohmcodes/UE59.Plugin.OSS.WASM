@@ -68,10 +68,17 @@ Canvas Panel
       │  ├─ Button_Refresh  (Button) └─ Text Block "Refresh"                        optional
       │  └─ Button_Back     (Button) └─ Text Block "Back"                           optional
       ├─ List_Servers  (Scroll Box)        Slot: Size = Fill 1.0
+      ├─ Horizontal Box                    (direct connect, optional)
+      │  ├─ TextBox_Address (Editable Text Box)  Hint Text "IP or host, e.g. 192.168.1.20:7777"   Slot: Fill
+      │  └─ Button_Connect  (Button) └─ Text Block "Connect"
       └─ Text_Status   (Text Block)
 ```
 
 Required: `List_Servers` (Scroll Box or Vertical Box), `Text_Status`.
+Optional: `TextBox_Address` + `Button_Connect` = **direct connect**: the player types an IP or host name (port defaults
+to 7777; `ws://` or `http://` prefixes are ignored) and presses Connect or Enter. No backend call and no join ticket,
+so it works for a LAN, a friend's PC-hosted server or an unlisted server. A server started with `-WasmOssRequireTicket`
+refuses direct connections. In a browser the address must be reachable from the web relay.
 
 **Class Defaults** (toolbar button) → category *OSS WASM*:
 
@@ -83,9 +90,11 @@ Required: `List_Servers` (Scroll Box or Vertical Box), `Text_Status`.
 | Auto Refresh Seconds | 10 (0 = only with the Refresh button) |
 | Show Full Servers | on |
 
-That's all: clicking a row's Join logs in if needed, gets a join ticket and travels to the server.
+That's all: clicking a row's Join logs in if needed, gets a join ticket and travels to the server. **Nothing connects
+by itself**; the player always picks a server or types an address.
 Optional events: **On Status Changed** (to color errors), **On Servers Refreshed**, **On Joining** (play a sound, show
-a loading screen).
+a loading screen; also fires for direct connect). Blueprint function **Connect To Address** does a direct connect from
+your own button.
 
 ## 3. WBP_WasmOss_LeaderboardRow
 
@@ -177,7 +186,7 @@ join fails or the server kicks the player, the engine returns to the Game Defaul
 2. In the editor open `Lvl_WasmOss_MainMenu` → Play (**Standalone Game** is closest to a packaged client).
    You should see "Playing as Guest-xxxx", then **Play online** lists `Local 7777`; **Join** puts you on the server.
 3. Package again (Windows: `package.ps1 -What Client`, web: `-ClientPlatform Wasm`) and test the same in the browser
-   (guide 04). The menu now replaces `-WasmOssAutoJoin`.
+   (guide 04). The menu replaces the old auto-join (removed). Also test **direct connect**: type `127.0.0.1:7777` and press Enter.
 
 | Problem | Fix |
 |---|---|

@@ -1,12 +1,10 @@
-// Console commands and the -WasmOssAutoJoin start option, for testing packaged builds without any UI.
+// Console commands for testing packaged builds without any UI. Nothing here connects by itself.
 //   wasmoss.Login [Name]      log in as a guest
 //   wasmoss.Servers           list servers (also shown on screen)
 //   wasmoss.Join <n|id>       join server number n from the last list (default 0), or by id
-//   wasmoss.AutoJoin          login + list + join the first server with room
-// Start a client with -WasmOssAutoJoin (web: Development page ?args=-WasmOssAutoJoin) to do AutoJoin at startup.
+//   wasmoss.Connect <host[:port]>  direct connect to an address (no backend call, no ticket)
 
 #include "CoreMinimal.h"
-#include "Containers/Ticker.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
@@ -116,26 +114,6 @@ namespace WasmOssConsole
 		});
 	}
 
-	static void AutoJoin(UWorld* World)
-	{
-		TWeakObjectPtr<UWorld> WeakWorld(World);
-		Login(World, FString(), [WeakWorld]()
-		{
-			ListServers(WeakWorld.Get(), [WeakWorld]()
-			{
-				for (const FWasmOssServerInfo& Server : GLastServers)
-				{
-					if (!Server.IsFull())
-					{
-						Join(WeakWorld.Get(), Server);
-						return;
-					}
-				}
-				Say(TEXT("No server with room. Start a dedicated server, then run wasmoss.AutoJoin"), FColor::Yellow);
-			});
-		});
-	}
-
 	static FAutoConsoleCommandWithWorldAndArgs CmdLogin(TEXT("wasmoss.Login"), TEXT("Log in as a guest: wasmoss.Login [DisplayName]"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
@@ -178,40 +156,18 @@ namespace WasmOssConsole
 			}
 		}));
 
-	static FAutoConsoleCommandWithWorldAndArgs CmdAutoJoin(TEXT("wasmoss.AutoJoin"), TEXT("Login, list servers and join the first one with room"),
-		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>&, UWorld* World)
+	static FAutoConsoleCommandWithWorldAndArgs CmdConnect(TEXT("wasmoss.Connect"), TEXT("Direct connect: wasmoss.Connect <host[:port]> (port defaults to 7777)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
-			AutoJoin(World);
+			UWasmOssSubsystem* Subsystem = Oss(World);
+			if (!Subsystem)
+			{
+				return;
+			}
+			FString Error;
+			if (Args.Num() == 0 || !Subsystem->TravelToAddress(World->GetFirstPlayerController(), Args[0], Error))
+			{
+				Say(TEXT("Connect failed: ") + (Error.IsEmpty() ? FString(TEXT("usage: wasmoss.Connect <host[:port]>")) : Error), FColor::Red);
+			}
 		}));
-
-	/** -WasmOssAutoJoin: wait until the client has a local player controller, then AutoJoin once. */
-	static void StartAutoJoinIfRequested()
-	{
-		if (IsRunningDedicatedServer() || !FParse::Param(FCommandLine::Get(), TEXT("WasmOssAutoJoin")))
-		{
-			return;
-		}
-		FTSTicker::GetCoreTicker().AddTicker(TEXT("WasmOssAutoJoin"), 0.5f, [](float) -> bool
-		{
-			if (!GEngine)
-			{
-				return true;
-			}
-			for (const FWorldContext& Context : GEngine->GetWorldContexts())
-			{
-				UWorld* World = Context.World();
-				if (World && World->IsGameWorld() && World->GetFirstPlayerController() && UWasmOssSubsystem::Get(World))
-				{
-					AutoJoin(World);
-					return false; // once
-				}
-			}
-			return true;
-		});
-	}
-}
-
-void WasmOssStartAutoJoinIfRequested()
-{
-	WasmOssConsole::StartAutoJoinIfRequested();
 }

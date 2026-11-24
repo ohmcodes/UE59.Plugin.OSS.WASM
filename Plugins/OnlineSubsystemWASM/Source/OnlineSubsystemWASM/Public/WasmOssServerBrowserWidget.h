@@ -7,6 +7,7 @@
 
 class UButton;
 class UCheckBox;
+class UEditableTextBox;
 class UPanelWidget;
 class UTextBlock;
 
@@ -65,7 +66,8 @@ private:
  * Base class for the server browser (WBP_WasmOss_ServerBrowser, guide 05). Lists the servers of this game version,
  * logs in as a guest first if needed, and joins the chosen server (join ticket + travel).
  * Required widgets: List_Servers (any panel: Scroll Box, Vertical Box), Text_Status.
- * Optional: Button_Refresh, CheckBox_ShowFull, Button_Back.
+ * Optional: Button_Refresh, CheckBox_ShowFull, Button_Back,
+ *           TextBox_Address + Button_Connect (direct connect by IP / host name, no server list needed).
  */
 UCLASS(Abstract)
 class ONLINESUBSYSTEMWASM_API UWasmOssServerBrowserWidget : public UUserWidget
@@ -108,6 +110,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "OSS WASM")
 	void JoinServer(const FWasmOssServerInfo& Server);
 
+	/**
+	 * Direct connect: travels to "host:port" (port defaults to 7777) without the backend and without a join ticket.
+	 * With no argument it uses the text typed in TextBox_Address. Works for LAN, a friend's PC server, or a server
+	 * that isn't registered. In a browser the address must be reachable from the web relay.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "OSS WASM")
+	void ConnectToAddress(const FString& Address);
+
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual void NativeConstruct() override;
@@ -143,7 +153,20 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UButton> Button_Back;
 
+	/** Where the player types an IP / host name (e.g. 192.168.1.20:7777). Enter connects. */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UEditableTextBox> TextBox_Address;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> Button_Connect;
+
 private:
+	UFUNCTION()
+	void HandleConnectClicked();
+
+	UFUNCTION()
+	void HandleAddressCommitted(const FText& Text, ETextCommit::Type CommitMethod);
+
 	UFUNCTION()
 	void HandleRefreshClicked();
 

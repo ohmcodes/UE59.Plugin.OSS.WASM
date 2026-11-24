@@ -82,9 +82,9 @@ Open `http://localhost:8080/index.html` in **Chrome or Edge** (never the file fr
 
 | Way | How |
 |---|---|
-| Automatic (Development builds) | `http://localhost:8080/index.html?args=-WasmOssAutoJoin` |
-| Second player in another tab | `...?args=-WasmOssAutoJoin%20-WasmOssGuestSuffix=2` (tabs share the browser's save data, so they'd be the same guest otherwise) |
-| Console | press `` ` `` and type `wasmoss.AutoJoin`, or `wasmoss.Login`, `wasmoss.Servers`, `wasmoss.Join 0` |
+| Menu | the server list, or type an address for a direct connect |
+| Second player in another tab | `http://localhost:8080/index.html?args=-WasmOssGuestSuffix=2` (Development builds) (tabs share the browser's save data, so they'd be the same guest otherwise) |
+| Console | press `` ` `` and type `wasmoss.Login`, `wasmoss.Servers`, `wasmoss.Join 0` or `wasmoss.Connect <host:port>` |
 
 Press F12 → Console to see the engine log (`LogOssWasm` lines). The relay logs every connection.
 

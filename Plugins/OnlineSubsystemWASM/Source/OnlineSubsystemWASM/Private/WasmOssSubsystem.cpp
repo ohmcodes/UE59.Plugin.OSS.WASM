@@ -328,6 +328,54 @@ bool UWasmOssSubsystem::TravelToServer(APlayerController* PlayerController, cons
 	return true;
 }
 
+bool UWasmOssSubsystem::NormalizeDirectAddress(const FString& Input, FString& OutAddress, FString& Error)
+{
+	FString Text = Input.TrimStartAndEnd();
+	const int32 SchemeEnd = Text.Find(TEXT("://"));
+	if (SchemeEnd != INDEX_NONE)
+	{
+		Text = Text.Mid(SchemeEnd + 3);
+	}
+	Text.Split(TEXT("/"), &Text, nullptr); // drop any path
+	Text.TrimStartAndEndInline();
+	if (Text.IsEmpty() || Text.Contains(TEXT(" ")) || Text.Contains(TEXT("?")))
+	{
+		Error = TEXT("Type an address like 192.168.1.20:7777");
+		return false;
+	}
+	FString Host = Text;
+	FString PortText;
+	if (Text.Split(TEXT(":"), &Host, &PortText, ESearchCase::IgnoreCase, ESearchDir::FromEnd))
+	{
+		if (Host.IsEmpty() || PortText.IsEmpty() || !PortText.IsNumeric() || FCString::Atoi(*PortText) < 1 || FCString::Atoi(*PortText) > 65535)
+		{
+			Error = TEXT("The port must be a number from 1 to 65535");
+			return false;
+		}
+	}
+	else
+	{
+		PortText = TEXT("7777");
+	}
+	OutAddress = Host + TEXT(":") + PortText;
+	return true;
+}
+
+bool UWasmOssSubsystem::TravelToAddress(APlayerController* PlayerController, const FString& TypedAddress, FString& Error) const
+{
+	FString Address;
+	if (!NormalizeDirectAddress(TypedAddress, Address, Error))
+	{
+		return false;
+	}
+	if (!PlayerController)
+	{
+		Error = TEXT("No player controller");
+		return false;
+	}
+	return TravelToServer(PlayerController, Address, FString());
+}
+
 // ---- Leaderboards ----------------------------------------------------------------------------------------------------
 
 void UWasmOssSubsystem::SubmitScore(const FString& Board, double Score, FOnScore&& OnComplete)

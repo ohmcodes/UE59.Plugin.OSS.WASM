@@ -97,17 +97,18 @@ If it crashes, the backend drops it after 30 s.
 ## 4. Test with the packaged client
 
 ```powershell
-.\Packaged\Windows\<Project>.exe -windowed -resx=1280 -resy=720 -log -WasmOssAutoJoin
+.\Packaged\Windows\<Project>.exe -windowed -resx=1280 -resy=720 -log
 ```
 
-`-WasmOssAutoJoin` logs in, lists servers and joins the first one with room. Or open the console (`` ` ``) and type:
+The client opens your menu (guide 05); pick a server in the list or type its address for a direct connect. Nothing
+connects automatically. Without the menu, open the console (`` ` ``) and type:
 
 | Command | Does |
 |---|---|
 | `wasmoss.Login Alice` | Guest login with a name |
 | `wasmoss.Servers` | List servers (also on screen) |
 | `wasmoss.Join 0` | Join server 0 from the list (or `wasmoss.Join <server id>`) |
-| `wasmoss.AutoJoin` | All three |
+| `wasmoss.Connect 127.0.0.1:7777` | Direct connect by address (no backend, no ticket; port defaults to 7777) |
 
 Start two clients to see each other move. Clients on the same PC share a save folder and would log in as the same
 guest; add `-WasmOssGuestSuffix=2` (3, ...) to the extra clients to make them different players. Run a second server with another port (`-port=7778`) to see two entries in the list.

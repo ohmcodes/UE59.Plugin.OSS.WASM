@@ -66,6 +66,15 @@ public:
 	/** ClientTravel to Address, passing the ticket as a URL option the dedicated server checks. */
 	bool TravelToServer(APlayerController* PlayerController, const FString& Address, const FString& Ticket) const;
 
+	/**
+	 * Cleans what a player typed ("ws://1.2.3.4", " host:7777 ", "host") into "host:port". The port defaults to 7777.
+	 * Returns false (and fills Error) when nothing usable was typed.
+	 */
+	static bool NormalizeDirectAddress(const FString& Input, FString& OutAddress, FString& Error);
+
+	/** Direct connect without the server list: no backend call, no join ticket. Servers accept this unless started with -WasmOssRequireTicket. */
+	bool TravelToAddress(APlayerController* PlayerController, const FString& TypedAddress, FString& Error) const;
+
 	// ---- Leaderboards ---------------------------------------------------------------------------------------------
 
 	void SubmitScore(const FString& Board, double Score, FOnScore&& OnComplete);

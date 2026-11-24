@@ -346,7 +346,7 @@ Clients see it in `FWasmOssServerInfo::Mode` / `State` (the next heartbeat sends
 |---|---|
 | Client code in the editor | PIE (Standalone or New Editor Window). Each PIE window is a different guest (setting *Unique Player Per PIE Instance*). |
 | Server code | Package the server (guide 03). In PIE the server subsystem exists only in a separate server process: *Net Mode: Play As Client* with **Run Under One Process** off (Editor Preferences → Level Editor → Play → Multiplayer Options). |
-| Join through the list | Packaged server + packaged client, or `-WasmOssAutoJoin` on the client. |
+| Join through the list | Packaged server + packaged client; pick the server in the menu list, or type its address (direct connect). |
 | Web specifics (fetch, relay) | Web build served by `serve-web.ps1` (guide 04). |
 | What the backend has | `Invoke-RestMethod http://localhost:3000/v1/servers`, `/v1/leaderboards/<board>` |
 | Logs | Category `LogOssWasm`; `-LogCmds="LogOssWasm Verbose"` prints every request. In the browser: F12 → Console. |

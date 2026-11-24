@@ -81,6 +81,14 @@ void UWasmOssServerBrowserWidget::NativeOnInitialized()
 	{
 		Button_Back->OnClicked.AddUniqueDynamic(this, &ThisClass::HandleBackClicked);
 	}
+	if (Button_Connect)
+	{
+		Button_Connect->OnClicked.AddUniqueDynamic(this, &ThisClass::HandleConnectClicked);
+	}
+	if (TextBox_Address)
+	{
+		TextBox_Address->OnTextCommitted.AddUniqueDynamic(this, &ThisClass::HandleAddressCommitted);
+	}
 	if (CheckBox_ShowFull)
 	{
 		CheckBox_ShowFull->SetIsChecked(bShowFullServers);
@@ -286,6 +294,48 @@ void UWasmOssServerBrowserWidget::RequestTicket(const FWasmOssServerInfo& Server
 			PlayerController->SetShowMouseCursor(false);
 		}
 	});
+}
+
+void UWasmOssServerBrowserWidget::ConnectToAddress(const FString& Address)
+{
+	UWasmOssSubsystem* Subsystem = UWasmOssSubsystem::Get(this);
+	APlayerController* PlayerController = GetOwningPlayer();
+	if (!Subsystem || !PlayerController)
+	{
+		return;
+	}
+	const FString Typed = Address.IsEmpty() && TextBox_Address ? TextBox_Address->GetText().ToString() : Address;
+	FString Normalized, Error;
+	if (!UWasmOssSubsystem::NormalizeDirectAddress(Typed, Normalized, Error))
+	{
+		SetStatus(FText::FromString(Error), true);
+		return;
+	}
+	FWasmOssServerInfo Direct;
+	Direct.Name = Normalized;
+	Direct.ConnectUrl = Normalized;
+	SetStatus(FText::Format(LOCTEXT("Connecting", "Connecting to {0}..."), FText::FromString(Normalized)));
+	OnJoining(Direct);
+	if (!Subsystem->TravelToAddress(PlayerController, Normalized, Error))
+	{
+		SetStatus(FText::FromString(Error), true);
+		return;
+	}
+	PlayerController->SetInputMode(FInputModeGameOnly());
+	PlayerController->SetShowMouseCursor(false);
+}
+
+void UWasmOssServerBrowserWidget::HandleConnectClicked()
+{
+	ConnectToAddress(FString());
+}
+
+void UWasmOssServerBrowserWidget::HandleAddressCommitted(const FText&, ETextCommit::Type CommitMethod)
+{
+	if (CommitMethod == ETextCommit::OnEnter)
+	{
+		ConnectToAddress(FString());
+	}
 }
 
 void UWasmOssServerBrowserWidget::HandleRefreshClicked()

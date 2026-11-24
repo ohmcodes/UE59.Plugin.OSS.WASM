@@ -24,15 +24,4 @@ FString UWasmOssSettings::GetEffectiveBackendUrl() const
 	return Url;
 }
 
-void WasmOssStartAutoJoinIfRequested(); // WasmOssConsole.cpp
-
-class FOnlineSubsystemWASMModule : public IModuleInterface
-{
-public:
-	virtual void StartupModule() override
-	{
-		WasmOssStartAutoJoinIfRequested();
-	}
-};
-
-IMPLEMENT_MODULE(FOnlineSubsystemWASMModule, OnlineSubsystemWASM)
+IMPLEMENT_MODULE(FDefaultModuleImpl, OnlineSubsystemWASM)
